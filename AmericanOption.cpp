@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <stdexcept>
 #include <iostream>
+#include <fstream>
 
 // Implement clone methods
 AmericanOption* AmericanOption::cloneWithPerturbedSpot(double perturbedSpot) const {
@@ -41,6 +42,12 @@ void AmericanOption::display() const {
     std::cout << "Volatility: " << volatility << "\n";
     std::cout << "Asset Price Steps (M): " << M << "\n";
     std::cout << "Time Steps (N): " << N << "\n";
+}
+
+// Method to record exercise boundary
+void AmericanOption::recordExerciseBoundary(double t, double S_star) const {
+    exerciseBoundary_t.push_back(t);
+    exerciseBoundary_S_star.push_back(S_star);
 }
 
 // Implement price method using Finite Difference Method with Early Exercise
@@ -93,6 +100,8 @@ double AmericanOption::price(const Market& market) const {
 
     // Time-stepping loop
     for(int step = N -1; step >=0; --step){
+        double t = step * dt; // Current time
+
         // Populate the tridiagonal matrix coefficients
         for(int j = 1; j <=n; ++j){ // j =1 to n
             double Si = S[j];
@@ -129,14 +138,14 @@ double AmericanOption::price(const Market& market) const {
         }
         else if(type == "Put"){
             // V(0, t) = K * e^{-r*(T-t)}
-            double boundary = strike * std::exp(-r * (maturity - step * dt));
+            double boundary = strike * std::exp(-r * (maturity - t));
             d_coeff[0] += alpha_first * boundary;
         }
 
         // Upper boundary (S=S_max)
         if(type == "Call"){
             // V(S_max, t) = S_max - K * e^{-r*(T-t)}
-            double boundary = S_max - strike * std::exp(-r * (maturity - step * dt));
+            double boundary = S_max - strike * std::exp(-r * (maturity - t));
             d_coeff[n -1] += gamma_last * boundary;
         }
         else if(type == "Put"){
@@ -164,10 +173,10 @@ double AmericanOption::price(const Market& market) const {
         // Apply boundary conditions
         if(type == "Call"){
             V_new[0] = 0.0;
-            V_new[M] = S_max - strike * std::exp(-r * (maturity - step * dt));
+            V_new[M] = S_max - strike * std::exp(-r * (maturity - t));
         }
         else if(type == "Put"){
-            V_new[0] = strike * std::exp(-r * (maturity - step * dt));
+            V_new[0] = strike * std::exp(-r * (maturity - t));
             V_new[M] = 0.0;
         }
 
@@ -185,6 +194,26 @@ double AmericanOption::price(const Market& market) const {
             }
             V_new[j] = std::max(V_new[j], intrinsic);
         }
+
+        // Identify the exercise boundary S_star(t)
+        double S_star = 0.0;
+        for(int j =1; j <=n; ++j){
+            double intrinsic;
+            if(type == "Call"){
+                intrinsic = std::max(S[j] - strike, 0.0);
+            }
+            else if(type == "Put"){
+                intrinsic = std::max(strike - S[j], 0.0);
+            }
+
+            if(V_new[j] == intrinsic){
+                S_star = S[j];
+                break; // Found the critical point
+            }
+        }
+
+        // Record the exercise boundary
+        recordExerciseBoundary(t, S_star);
 
         // Update V_prev for the next time step
         V_prev = V_new;
@@ -210,6 +239,24 @@ double AmericanOption::price(const Market& market) const {
 
     // Linear interpolation
     double optionPrice = V1 + (V2 - V1) * (spotPrice - S1) / (S2 - S1);
+
+    // Export the exercise boundary to CSV
+    std::ofstream boundaryFile("exercise_boundary.csv");
+    if (!boundaryFile.is_open()) {
+        throw std::runtime_error("Unable to create 'exercise_boundary.csv'.");
+    }
+
+    // Write header
+    boundaryFile << "t,S_star(t)\n";
+
+    // Write data
+    for(int i =0; i < exerciseBoundary_t.size(); ++i){
+        boundaryFile << exerciseBoundary_t[i] << "," << exerciseBoundary_S_star[i] << "\n";
+    }
+
+    boundaryFile.close();
+
+    std::cout << "[Data] Exercise boundary has been written to 'exercise_boundary.csv'.\n";
 
     return optionPrice;
 }

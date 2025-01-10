@@ -11,69 +11,70 @@
 #include <sstream>
 #include <map>
 #include <algorithm>
+#include <vector>
 
 int main() {
     try {
-        // File names
-        std::string ratesFile = "inputs_rates.csv";      // Interest rates
-        std::string optionsFile = "inputs_model.csv";  // Option parameters
+        // Noms des fichiers
+        std::string ratesFile = "inputs_rates.csv";      // Taux d'intérêt
+        std::string optionsFile = "inputs_model.csv";    // Paramètres de l'option
 
-        // Create and load Market instance
+        // Création et chargement de l'instance Market
         Market market;
-        market.loadRates(ratesFile); // Ensure this file exists and is correctly formatted
-        std::cout << "[Market] Rates loaded from " << ratesFile << ".\n";
+        market.loadRates(ratesFile); // Assurez-vous que ce fichier existe et est correctement formaté
+        std::cout << "[Market] Taux chargés depuis " << ratesFile << ".\n";
         market.displayRates();
 
-        // Open the options file
+        // Ouverture du fichier des options
         std::ifstream infile(optionsFile);
         if (!infile.is_open()) {
-            throw std::runtime_error("Unable to open options file: " + optionsFile);
+            throw std::runtime_error("Impossible d'ouvrir le fichier des options : " + optionsFile);
         }
 
         std::string line;
-        // Read the header line
+        // Lecture de la ligne d'en-tête
         if (!std::getline(infile, line)) {
-            throw std::runtime_error("Options file is empty.");
+            throw std::runtime_error("Le fichier des options est vide.");
         }
 
-        // Create a map to hold parameter-value pairs
+        // Création d'une map pour stocker les paires paramètre-valeur
         std::map<std::string, std::string> paramMap;
 
-        // Read each line and populate the map
+        // Lecture de chaque ligne et remplissage de la map
         while (std::getline(infile, line)) {
-            if (line.empty()) continue; // Skip empty lines
+            if (line.empty()) continue; // Ignorer les lignes vides
 
             std::stringstream ss(line);
             std::string param, value;
 
-            // Read until the first comma for parameter
+            // Lecture jusqu'à la première virgule pour le paramètre
             if (!std::getline(ss, param, ',')) continue;
-            // Read the rest for value (in case value contains commas)
+            // Lecture du reste pour la valeur (au cas où la valeur contiendrait des virgules)
             if (!std::getline(ss, value)) continue;
 
-            // Trim whitespace from param and value
-            param.erase(0, param.find_first_not_of(" \t\r\n")); // Left trim
-            param.erase(param.find_last_not_of(" \t\r\n") + 1); // Right trim
-            value.erase(0, value.find_first_not_of(" \t\r\n")); // Left trim
-            value.erase(value.find_last_not_of(" \t\r\n") + 1); // Right trim
+            // Suppression des espaces blancs au début et à la fin
+            param.erase(0, param.find_first_not_of(" \t\r\n")); // Suppression gauche
+            param.erase(param.find_last_not_of(" \t\r\n") + 1); // Suppression droite
+            value.erase(0, value.find_first_not_of(" \t\r\n")); // Suppression gauche
+            value.erase(value.find_last_not_of(" \t\r\n") + 1); // Suppression droite
 
             paramMap[param] = value;
         }
 
         infile.close();
 
-        // Extract parameters from the map
-        std::string type = paramMap["Type de contrat"];           // "Call" or "Put"
-        std::string exerciseType = paramMap["Type d'exercice"];  // "européen" or "américain"
+        // Extraction des paramètres de la map
+        std::string type = paramMap["Type de contrat"];           // "Call" ou "Put"
+        std::string exerciseType = paramMap["Type d'exercice"];  // "européen" ou "américain"
         double maturity = std::stod(paramMap["Maturité (en années)"]);
         double strike = std::stod(paramMap["Prix d’exercice (strike)"]);
         double spotPrice = std::stod(paramMap["Prix actuel (S0)"]);
         double volatility = std::stod(paramMap["Volatilité (sigma)"]);
-        int N = std::stoi(paramMap["Discrétisation (temps)"]);   // Time steps
-        int M = std::stoi(paramMap["Discrétisation (spot)"]);    // Asset price steps
+        int N = std::stoi(paramMap["Discrétisation (temps)"]);   // Pas de temps
+        int M = std::stoi(paramMap["Discrétisation (spot)"]);    // Pas de prix de l'actif
         std::string calculationDate = paramMap["Date de calcul"];
 
-        // Create Option instance using smart pointers
+        // Création de l'instance Option en utilisant des pointeurs intelligents
         std::unique_ptr<Option> myOption;
 
         if (exerciseType == "européen") {
@@ -89,31 +90,38 @@ int main() {
             );
         }
         else {
-            std::cerr << "Invalid exercise type specified.\n";
+            std::cerr << "Type d'exercice invalide spécifié.\n";
             return 1;
         }
 
-        // Display option details
+        // Affichage des détails de l'option
         myOption->display();
 
-        // Calculate Option Price
+        // Calcul du prix de l'option au prix initial de l'actif
         double optionPrice = myOption->price(market);
         std::cout << "Option Price: " << optionPrice << "\n";
 
-        // Calculate Greeks
-        // Downcast to access derived class methods
+        // Déclaration des variables pour les Grecques
+        double delta = 0.0;
+        double gamma = 0.0;
+        double rho = 0.0;
+        double vega = 0.0;
+        double theta = 0.0;
+
+        // Calcul des Grecques
+        // Downcast pour accéder aux méthodes des classes dérivées
         if (exerciseType == "européen") {
             EuropeanOption* euroOpt = dynamic_cast<EuropeanOption*>(myOption.get());
             if (euroOpt) {
                 double dS = 1.0;         // $1
-                double delta = euroOpt->delta(market, dS);
-                double gamma = euroOpt->gamma(market, dS);
+                delta = euroOpt->delta(market, dS);
+                gamma = euroOpt->gamma(market, dS);
                 double dr = 0.0001;      // 0.01%
-                double rho = euroOpt->rho(market, dr);
+                rho = euroOpt->rho(market, dr);
                 double dSigma = 0.0001;  // 0.01%
-                double vega = euroOpt->vega(market, dSigma);
-                double dT = 1e-4;        // ~0.0365 days
-                double theta = euroOpt->theta(market, dT);
+                vega = euroOpt->vega(market, dSigma);
+                double dT = 1e-4;        // ~0.0365 jours
+                theta = euroOpt->theta(market, dT);
 
                 std::cout << "Delta: " << delta << "\n";
                 std::cout << "Gamma: " << gamma << "\n";
@@ -122,21 +130,21 @@ int main() {
                 std::cout << "Theta: " << theta << "\n";
             }
             else {
-                std::cerr << "Error: Failed to cast to EuropeanOption.\n";
+                std::cerr << "Erreur : Échec du cast en EuropeanOption.\n";
             }
         }
         else if (exerciseType == "américain") {
             AmericanOption* amOpt = dynamic_cast<AmericanOption*>(myOption.get());
             if (amOpt) {
                 double dS = 1.0;         // $1
-                double delta = amOpt->delta(market, dS);
-                double gamma = amOpt->gamma(market, dS);
+                delta = amOpt->delta(market, dS);
+                gamma = amOpt->gamma(market, dS);
                 double dr = 0.0001;      // 0.01%
-                double rho = amOpt->rho(market, dr);
+                rho = amOpt->rho(market, dr);
                 double dSigma = 0.0001;  // 0.01%
-                double vega = amOpt->vega(market, dSigma);
-                double dT = 1e-4;        // ~0.0365 days
-                double theta = amOpt->theta(market, dT);
+                vega = amOpt->vega(market, dSigma);
+                double dT = 1e-4;        // ~0.0365 jours
+                theta = amOpt->theta(market, dT);
 
                 std::cout << "Delta: " << delta << "\n";
                 std::cout << "Gamma: " << gamma << "\n";
@@ -145,13 +153,147 @@ int main() {
                 std::cout << "Theta: " << theta << "\n";
             }
             else {
-                std::cerr << "Error: Failed to cast to AmericanOption.\n";
+                std::cerr << "Erreur : Échec du cast en AmericanOption.\n";
             }
         }
 
+        // -------------------------------
+        // EXPORTATION DU PRIX DE L'OPTION ET DES GRECQUES
+        // -------------------------------
+
+        // Ouvrir un nouveau fichier CSV pour stocker le prix de l'option et les Grecques
+        std::ofstream greeksFile("option_greeks.csv");
+        if (!greeksFile.is_open()) {
+            throw std::runtime_error("Impossible de créer le fichier de sortie pour les grecques.");
+        }
+
+        // Écrire l'en-tête
+        greeksFile << "Option_Price,Delta,Gamma,Rho,Vega,Theta\n";
+
+        // Écrire les données
+        greeksFile << optionPrice << "," << delta << "," << gamma << "," << rho << "," << vega << "," << theta << "\n";
+
+        greeksFile.close();
+
+        std::cout << "[Données] Le prix de l'option et les Grecques ont été écrits dans 'option_greeks.csv'.\n";
+
+        // -------------------------------
+        // EXPORTATION DU PRIX DE L'OPTION EN FONCTION DE S
+        // -------------------------------
+
+        // Définir la plage de valeurs S pour le tracé
+        double S_min = spotPrice * 0.5; // 50% du prix initial
+        double S_max = spotPrice * 1.5; // 150% du prix initial
+        int numPoints = 100;             // Nombre de points dans le tracé
+
+        double delta_S = (S_max - S_min) / (numPoints - 1);
+        double delta_S_finite = 1.0;     // Pas pour le calcul des Grecques (∆)
+
+        // Préparer les vecteurs pour stocker S et P(S,T)
+        std::vector<double> S_values;
+        std::vector<double> P_values;
+
+        // Itérer sur les valeurs de S et calculer P(S,T)
+        for(int i = 0; i < numPoints; ++i){
+            double current_S = S_min + i * delta_S;
+
+            // Créer une instance temporaire de l'Option avec current_S
+            std::unique_ptr<Option> tempOption;
+
+            if (exerciseType == "européen") {
+                tempOption = std::make_unique<EuropeanOption>(
+                    type, exerciseType, maturity, strike,
+                    calculationDate, current_S, volatility, M, N
+                );
+            }
+            else if (exerciseType == "américain") {
+                tempOption = std::make_unique<AmericanOption>(
+                    type, exerciseType, maturity, strike,
+                    calculationDate, current_S, volatility, M, N
+                );
+            }
+
+            // Calculer le prix de l'option pour current_S
+            double price = tempOption->price(market);
+
+            // Stocker les valeurs
+            S_values.push_back(current_S);
+            P_values.push_back(price);
+        }
+
+        // Écrire les données S et P(S,T) dans un fichier CSV
+        std::ofstream outfile("option_price_vs_S.csv");
+        if (!outfile.is_open()) {
+            throw std::runtime_error("Impossible de créer le fichier de sortie pour le tracé.");
+        }
+
+        // Écrire l'en-tête
+        outfile << "S,P(S,T)\n";
+
+        // Écrire les données
+        for(int i =0; i < numPoints; ++i){
+            outfile << S_values[i] << "," << P_values[i] << "\n";
+        }
+
+        outfile.close();
+
+        std::cout << "\n[Données] Les prix de l'option en fonction de S ont été écrits dans 'option_price_vs_S.csv'.\n";
+
+        // -------------------------------
+        // CALCUL ET EXPORTATION DE DELTA(S,T0)
+        // -------------------------------
+
+        // Préparer un vecteur pour stocker Delta(S,T0)
+        std::vector<double> Delta_values;
+
+        // Calculer Delta(S,T0) en utilisant les différences finies
+        for(int i = 0; i < numPoints; ++i){
+            if(i == 0){
+                // Différence avant
+                double P_plus = P_values[i+1];
+                double P_current = P_values[i];
+                double delta_S_local = S_values[i+1] - S_values[i];
+                double Delta = (P_plus - P_current) / delta_S_local;
+                Delta_values.push_back(Delta);
+            }
+            else if(i == numPoints -1){
+                // Différence arrière
+                double P_current = P_values[i];
+                double P_minus = P_values[i-1];
+                double delta_S_local = S_values[i] - S_values[i-1];
+                double Delta = (P_current - P_minus) / delta_S_local;
+                Delta_values.push_back(Delta);
+            }
+            else{
+                // Différence centrale
+                double P_plus = P_values[i+1];
+                double P_minus = P_values[i-1];
+                double Delta = (P_plus - P_minus) / (2 * delta_S_finite);
+                Delta_values.push_back(Delta);
+            }
+        }
+
+        // Écrire S et Delta(S,T0) dans un nouveau fichier CSV
+        std::ofstream deltaFile("delta_vs_S.csv");
+        if (!deltaFile.is_open()) {
+            throw std::runtime_error("Impossible de créer le fichier de sortie pour Delta.");
+        }
+
+        // Écrire l'en-tête
+        deltaFile << "S,Delta(S,T0)\n";
+
+        // Écrire les données
+        for(int i =0; i < numPoints; ++i){
+            deltaFile << S_values[i] << "," << Delta_values[i] << "\n";
+        }
+
+        deltaFile.close();
+
+        std::cout << "[Données] Delta(S,T0) en fonction de S ont été écrits dans 'delta_vs_S.csv'.\n";
+
     }
     catch (const std::exception& e) {
-        std::cerr << "Exception: " << e.what() << "\n";
+        std::cerr << "Exception : " << e.what() << "\n";
         return 1;
     }
 
