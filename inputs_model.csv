@@ -1,6 +1,6 @@
 Paramètre,Valeur
-Type de contrat,Put
-Type d'exercice,américain
+Type de contrat,Call
+Type d'exercice,européen
 Maturité (en années),1.0
 Prix d’exercice (strike),100
 Prix actuel (S0),110
