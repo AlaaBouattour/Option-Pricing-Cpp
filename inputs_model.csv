@@ -1,0 +1,10 @@
+Paramètre,Valeur
+Type de contrat,Put
+Type d'exercice,américain
+Maturité (en années),1.0
+Prix d’exercice (strike),100
+Prix actuel (S0),110
+Volatilité (sigma),0.2
+Discrétisation (temps),100
+Discrétisation (spot),200
+Date de calcul,2025-01-09
