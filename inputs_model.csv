@@ -1,10 +1,10 @@
-Paramètre,Valeur
+Parametre,Valeur
 Type de contrat,Call
-Type d'exercice,européen
-Maturité (en années),1.0
-Prix d’exercice (strike),100
-Prix actuel (S0),110
-Volatilité (sigma),0.2
-Discrétisation (temps),100
-Discrétisation (spot),200
-Date de calcul,2025-01-09
+Type d exercice,europeen
+Maturite (en annees),1.0
+Prix d exercice (strike), 100 
+Prix actuel (S0), 110 
+Volatilite (sigma),0.2
+Discretisation (temps), 100 
+Discretisation (spot), 200 
+Date de calcul,09/01/2025 

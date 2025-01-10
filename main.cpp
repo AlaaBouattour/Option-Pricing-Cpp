@@ -65,25 +65,25 @@ int main() {
 
         // Extraction des paramètres de la map
         std::string type = paramMap["Type de contrat"];           // "Call" ou "Put"
-        std::string exerciseType = paramMap["Type d'exercice"];  // "européen" ou "américain"
-        double maturity = std::stod(paramMap["Maturité (en années)"]);
-        double strike = std::stod(paramMap["Prix d’exercice (strike)"]);
+        std::string exerciseType = paramMap["Type d exercice"];  // "européen" ou "américain"
+        double maturity = std::stod(paramMap["Maturite (en annees)"]);
+        double strike = std::stod(paramMap["Prix d exercice (strike)"]);
         double spotPrice = std::stod(paramMap["Prix actuel (S0)"]);
-        double volatility = std::stod(paramMap["Volatilité (sigma)"]);
-        int N = std::stoi(paramMap["Discrétisation (temps)"]);   // Pas de temps
-        int M = std::stoi(paramMap["Discrétisation (spot)"]);    // Pas de prix de l'actif
+        double volatility = std::stod(paramMap["Volatilite (sigma)"]);
+        int N = std::stoi(paramMap["Discretisation (temps)"]);   // Pas de temps
+        int M = std::stoi(paramMap["Discretisation (spot)"]);    // Pas de prix de l'actif
         std::string calculationDate = paramMap["Date de calcul"];
 
         // Création de l'instance Option en utilisant des pointeurs intelligents
         std::unique_ptr<Option> myOption;
 
-        if (exerciseType == "européen") {
+        if (exerciseType == "europeen") {
             myOption = std::make_unique<EuropeanOption>(
                 type, exerciseType, maturity, strike,
                 calculationDate, spotPrice, volatility, M, N
             );
         }
-        else if (exerciseType == "américain") {
+        else if (exerciseType == "americain") {
             myOption = std::make_unique<AmericanOption>(
                 type, exerciseType, maturity, strike,
                 calculationDate, spotPrice, volatility, M, N
@@ -110,7 +110,7 @@ int main() {
 
         // Calcul des Grecques
         // Downcast pour accéder aux méthodes des classes dérivées
-        if (exerciseType == "européen") {
+        if (exerciseType == "europeen") {
             EuropeanOption* euroOpt = dynamic_cast<EuropeanOption*>(myOption.get());
             if (euroOpt) {
                 double dS = 1.0;         // $1
@@ -133,7 +133,7 @@ int main() {
                 std::cerr << "Erreur : Échec du cast en EuropeanOption.\n";
             }
         }
-        else if (exerciseType == "américain") {
+        else if (exerciseType == "americain") {
             AmericanOption* amOpt = dynamic_cast<AmericanOption*>(myOption.get());
             if (amOpt) {
                 double dS = 1.0;         // $1
@@ -199,13 +199,13 @@ int main() {
             // instance temporaire de l'Option avec current_S
             std::unique_ptr<Option> tempOption;
 
-            if (exerciseType == "européen") {
+            if (exerciseType == "europeen") {
                 tempOption = std::make_unique<EuropeanOption>(
                     type, exerciseType, maturity, strike,
                     calculationDate, current_S, volatility, M, N
                 );
             }
-            else if (exerciseType == "américain") {
+            else if (exerciseType == "americain") {
                 tempOption = std::make_unique<AmericanOption>(
                     type, exerciseType, maturity, strike,
                     calculationDate, current_S, volatility, M, N
