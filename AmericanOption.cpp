@@ -1,6 +1,6 @@
 // AmericanOption.cpp
 #include "AmericanOption.hpp"
-#include "Market.hpp"    // Include Market.hpp to access Market class methods
+#include "Market.hpp"    
 #include "Utils.hpp"
 #include <cmath>
 #include <vector>
@@ -8,7 +8,7 @@
 #include <stdexcept>
 #include <iostream>
 
-// Implement clone methods
+// On utilise les clones pour plus d'efficacité sur la mémoire
 AmericanOption* AmericanOption::cloneWithPerturbedSpot(double perturbedSpot) const {
     return new AmericanOption(type, exerciseType, maturity, strike,
                               calculationDate, perturbedSpot, volatility, M, N);
@@ -29,7 +29,7 @@ AmericanOption* AmericanOption::cloneWithPerturbedMaturity(double perturbedMatur
                               calculationDate, spotPrice, volatility, M, N);
 }
 
-// Implement display method
+// Pour l'affichage
 void AmericanOption::display() const {
     std::cout << "American Option Details:\n";
     std::cout << "Type: " << type << "\n";
@@ -43,13 +43,13 @@ void AmericanOption::display() const {
     std::cout << "Time Steps (N): " << N << "\n";
 }
 
-// Implement price method using Finite Difference Method with Early Exercise
+// Finite Difference Method avec Early Exercise
 double AmericanOption::price(const Market& market) const {
-    // Retrieve the risk-free rate at current time
+    // risk-free rate at current time
     double r = market.getRate(maturity);
 
     // Asset price range
-    double S_max = spotPrice * 3.0; // Adjust as needed based on volatility and maturity
+    double S_max = spotPrice * 3.0; 
     double dS = S_max / M;
 
     // Time step

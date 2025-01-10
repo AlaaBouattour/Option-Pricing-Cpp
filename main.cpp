@@ -21,7 +21,7 @@ int main() {
 
         // Création et chargement de l'instance Market
         Market market;
-        market.loadRates(ratesFile); // Assurez-vous que ce fichier existe et est correctement formaté
+        market.loadRates(ratesFile); 
         std::cout << "[Market] Taux chargés depuis " << ratesFile << ".\n";
         market.displayRates();
 
@@ -161,16 +161,15 @@ int main() {
         // EXPORTATION DU PRIX DE L'OPTION ET DES GRECQUES
         // -------------------------------
 
-        // Ouvrir un nouveau fichier CSV pour stocker le prix de l'option et les Grecques
+        // nouveau fichier CSV pour stocker le prix de l'option et les Grecques
         std::ofstream greeksFile("option_greeks.csv");
         if (!greeksFile.is_open()) {
             throw std::runtime_error("Impossible de créer le fichier de sortie pour les grecques.");
         }
 
-        // Écrire l'en-tête
+        // l'en-tête
         greeksFile << "Option_Price,Delta,Gamma,Rho,Vega,Theta\n";
 
-        // Écrire les données
         greeksFile << optionPrice << "," << delta << "," << gamma << "," << rho << "," << vega << "," << theta << "\n";
 
         greeksFile.close();
@@ -181,7 +180,7 @@ int main() {
         // EXPORTATION DU PRIX DE L'OPTION EN FONCTION DE S
         // -------------------------------
 
-        // Définir la plage de valeurs S pour le tracé
+        // plage de valeurs S pour le tracé
         double S_min = spotPrice * 0.5; // 50% du prix initial
         double S_max = spotPrice * 1.5; // 150% du prix initial
         int numPoints = 100;             // Nombre de points dans le tracé
@@ -189,15 +188,15 @@ int main() {
         double delta_S = (S_max - S_min) / (numPoints - 1);
         double delta_S_finite = 1.0;     // Pas pour le calcul des Grecques (∆)
 
-        // Préparer les vecteurs pour stocker S et P(S,T)
+        // vecteurs pour stocker S et P(S,T)
         std::vector<double> S_values;
         std::vector<double> P_values;
 
-        // Itérer sur les valeurs de S et calculer P(S,T)
+        // calcul de P(S,T)
         for(int i = 0; i < numPoints; ++i){
             double current_S = S_min + i * delta_S;
 
-            // Créer une instance temporaire de l'Option avec current_S
+            // instance temporaire de l'Option avec current_S
             std::unique_ptr<Option> tempOption;
 
             if (exerciseType == "européen") {
@@ -213,7 +212,7 @@ int main() {
                 );
             }
 
-            // Calculer le prix de l'option pour current_S
+            // prix de l'option pour current_S
             double price = tempOption->price(market);
 
             // Stocker les valeurs
@@ -221,16 +220,15 @@ int main() {
             P_values.push_back(price);
         }
 
-        // Écrire les données S et P(S,T) dans un fichier CSV
+        // S et P(S,T) --> CSV
         std::ofstream outfile("option_price_vs_S.csv");
         if (!outfile.is_open()) {
             throw std::runtime_error("Impossible de créer le fichier de sortie pour le tracé.");
         }
 
-        // Écrire l'en-tête
+        // l'en-tête
         outfile << "S,P(S,T)\n";
 
-        // Écrire les données
         for(int i =0; i < numPoints; ++i){
             outfile << S_values[i] << "," << P_values[i] << "\n";
         }
@@ -243,10 +241,10 @@ int main() {
         // CALCUL ET EXPORTATION DE DELTA(S,T0)
         // -------------------------------
 
-        // Préparer un vecteur pour stocker Delta(S,T0)
+        // vecteur pour stocker Delta(S,T0)
         std::vector<double> Delta_values;
 
-        // Calculer Delta(S,T0) en utilisant les différences finies
+        // Delta(S,T0) avec les différences finies
         for(int i = 0; i < numPoints; ++i){
             if(i == 0){
                 // Différence avant
@@ -273,16 +271,15 @@ int main() {
             }
         }
 
-        // Écrire S et Delta(S,T0) dans un nouveau fichier CSV
+        // Delta(S,T0) --> CSV
         std::ofstream deltaFile("delta_vs_S.csv");
         if (!deltaFile.is_open()) {
             throw std::runtime_error("Impossible de créer le fichier de sortie pour Delta.");
         }
 
-        // Écrire l'en-tête
+        // l'en-tête
         deltaFile << "S,Delta(S,T0)\n";
 
-        // Écrire les données
         for(int i =0; i < numPoints; ++i){
             deltaFile << S_values[i] << "," << Delta_values[i] << "\n";
         }
