@@ -181,8 +181,8 @@ int main() {
         // -------------------------------
 
         // plage de valeurs S pour le tracé
-        double S_min = spotPrice * 0.5; // 50% du prix initial
-        double S_max = spotPrice * 1.5; // 150% du prix initial
+        double S_min = strike * 0.5; //
+        double S_max = strike * 2; // 
         int numPoints = 100;             // Nombre de points dans le tracé
 
         double delta_S = (S_max - S_min) / (numPoints - 1);
