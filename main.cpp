@@ -53,10 +53,10 @@ int main() {
             if (!std::getline(ss, value)) continue;
 
             // Suppression des espaces blancs au début et à la fin
-            param.erase(0, param.find_first_not_of(" \t\r\n")); // Suppression gauche
-            param.erase(param.find_last_not_of(" \t\r\n") + 1); // Suppression droite
-            value.erase(0, value.find_first_not_of(" \t\r\n")); // Suppression gauche
-            value.erase(value.find_last_not_of(" \t\r\n") + 1); // Suppression droite
+            param.erase(0, param.find_first_not_of(" \t\r\n")); 
+            param.erase(param.find_last_not_of(" \t\r\n") + 1); 
+            value.erase(0, value.find_first_not_of(" \t\r\n")); 
+            value.erase(value.find_last_not_of(" \t\r\n") + 1); 
 
             paramMap[param] = value;
         }
@@ -64,14 +64,14 @@ int main() {
         infile.close();
 
         // Extraction des paramètres de la map
-        std::string type = paramMap["Type de contrat"];           // "Call" ou "Put"
-        std::string exerciseType = paramMap["Type d exercice"];  // "européen" ou "américain"
+        std::string type = paramMap["Type de contrat"];            // "Call" ou "Put"
+        std::string exerciseType = paramMap["Type d exercice"];    // "europeen" ou "american"
         double maturity = std::stod(paramMap["Maturite (en annees)"]);
         double strike = std::stod(paramMap["Prix d exercice (strike)"]);
         double spotPrice = std::stod(paramMap["Prix actuel (S0)"]);
         double volatility = std::stod(paramMap["Volatilite (sigma)"]);
-        int N = std::stoi(paramMap["Discretisation (temps)"]);   // Pas de temps
-        int M = std::stoi(paramMap["Discretisation (spot)"]);    // Pas de prix de l'actif
+        int N = std::stoi(paramMap["Discretisation (temps)"]);     // Pas de temps
+        int M = std::stoi(paramMap["Discretisation (spot)"]);      // Pas de prix de l'actif
         std::string calculationDate = paramMap["Date de calcul"];
 
         // Création de l'instance Option en utilisant des pointeurs intelligents
@@ -83,7 +83,7 @@ int main() {
                 calculationDate, spotPrice, volatility, M, N
             );
         }
-        else if (exerciseType == "americain") {
+        else if (exerciseType == "american") {
             myOption = std::make_unique<AmericanOption>(
                 type, exerciseType, maturity, strike,
                 calculationDate, spotPrice, volatility, M, N
@@ -101,15 +101,14 @@ int main() {
         double optionPrice = myOption->price(market);
         std::cout << "Option Price: " << optionPrice << "\n";
 
-        // Déclaration des variables pour les Grecques
+        // Déclaration des variables pour les Grecques globales
         double delta = 0.0;
         double gamma = 0.0;
         double rho = 0.0;
         double vega = 0.0;
         double theta = 0.0;
 
-        // Calcul des Grecques
-        // Downcast pour accéder aux méthodes des classes dérivées
+        // Calcul des Grecques (globales) via downcast
         if (exerciseType == "europeen") {
             EuropeanOption* euroOpt = dynamic_cast<EuropeanOption*>(myOption.get());
             if (euroOpt) {
@@ -133,7 +132,7 @@ int main() {
                 std::cerr << "Erreur : Échec du cast en EuropeanOption.\n";
             }
         }
-        else if (exerciseType == "americain") {
+        else if (exerciseType == "american") {
             AmericanOption* amOpt = dynamic_cast<AmericanOption*>(myOption.get());
             if (amOpt) {
                 double dS = 1.0;         // $1
@@ -157,21 +156,14 @@ int main() {
             }
         }
 
-        // -------------------------------
-        // EXPORTATION DU PRIX DE L'OPTION ET DES GRECQUES
-        // -------------------------------
-
-        // nouveau fichier CSV pour stocker le prix de l'option et les Grecques
+        // Exportation globale du prix et des Grecques
         std::ofstream greeksFile("option_greeks.csv");
         if (!greeksFile.is_open()) {
             throw std::runtime_error("Impossible de créer le fichier de sortie pour les grecques.");
         }
 
-        // l'en-tête
         greeksFile << "Option_Price,Delta,Gamma,Rho,Vega,Theta\n";
-
         greeksFile << optionPrice << "," << delta << "," << gamma << "," << rho << "," << vega << "," << theta << "\n";
-
         greeksFile.close();
 
         std::cout << "[Données] Le prix de l'option et les Grecques ont été écrits dans 'option_greeks.csv'.\n";
@@ -179,114 +171,108 @@ int main() {
         // -------------------------------
         // EXPORTATION DU PRIX DE L'OPTION EN FONCTION DE S
         // -------------------------------
-
-        // plage de valeurs S pour le tracé
-        double S_min = strike * 0.5; //
-        double S_max = strike * 2; // 
-        int numPoints = 100;             // Nombre de points dans le tracé
+        double S_min = strike * 0.3; 
+        double S_max = strike * 2.0; 
+        int numPoints = 100; 
 
         double delta_S = (S_max - S_min) / (numPoints - 1);
-        double delta_S_finite = 1.0;     // Pas pour le calcul des Grecques (∆)
 
-        // vecteurs pour stocker S et P(S,T)
+        // Vecteurs pour stocker S et P(S,T)
         std::vector<double> S_values;
         std::vector<double> P_values;
 
-        // calcul de P(S,T)
+        // Calcul de P(S,T) par instanciation temporaire
         for(int i = 0; i < numPoints; ++i){
             double current_S = S_min + i * delta_S;
 
-            // instance temporaire de l'Option avec current_S
             std::unique_ptr<Option> tempOption;
-
             if (exerciseType == "europeen") {
                 tempOption = std::make_unique<EuropeanOption>(
                     type, exerciseType, maturity, strike,
                     calculationDate, current_S, volatility, M, N
                 );
             }
-            else if (exerciseType == "americain") {
+            else {
                 tempOption = std::make_unique<AmericanOption>(
                     type, exerciseType, maturity, strike,
                     calculationDate, current_S, volatility, M, N
                 );
             }
 
-            // prix de l'option pour current_S
             double price = tempOption->price(market);
 
-            // Stocker les valeurs
             S_values.push_back(current_S);
             P_values.push_back(price);
         }
 
-        // S et P(S,T) --> CSV
+        // Écriture de P(S,T) dans un CSV
         std::ofstream outfile("option_price_vs_S.csv");
         if (!outfile.is_open()) {
             throw std::runtime_error("Impossible de créer le fichier de sortie pour le tracé.");
         }
-
-        // l'en-tête
         outfile << "S,P(S,T)\n";
-
         for(int i =0; i < numPoints; ++i){
             outfile << S_values[i] << "," << P_values[i] << "\n";
         }
-
         outfile.close();
 
         std::cout << "\n[Données] Les prix de l'option en fonction de S ont été écrits dans 'option_price_vs_S.csv'.\n";
 
         // -------------------------------
-        // CALCUL ET EXPORTATION DE DELTA(S,T0)
+        // CALCUL ET EXPORTATION DE DELTA(S) VIA LA MÉTHODE delta(...)
         // -------------------------------
+        double dS_for_delta = 1.0;  // Pas à utiliser pour le calcul de Delta
+        std::vector<double> Delta_values_method2;
 
-        // vecteur pour stocker Delta(S,T0)
-        std::vector<double> Delta_values;
-
-        // Delta(S,T0) avec les différences finies
         for(int i = 0; i < numPoints; ++i){
-            if(i == 0){
-                // Différence avant
-                double P_plus = P_values[i+1];
-                double P_current = P_values[i];
-                double delta_S_local = S_values[i+1] - S_values[i];
-                double Delta = (P_plus - P_current) / delta_S_local;
-                Delta_values.push_back(Delta);
+            double current_S = S_min + i * delta_S;
+
+            // Création d'une option temporaire avec spot = current_S
+            std::unique_ptr<Option> tempOption;
+            if (exerciseType == "europeen") {
+                tempOption = std::make_unique<EuropeanOption>(
+                    type, exerciseType, maturity, strike,
+                    calculationDate, current_S, volatility, M, N
+                );
             }
-            else if(i == numPoints -1){
-                // Différence arrière
-                double P_current = P_values[i];
-                double P_minus = P_values[i-1];
-                double delta_S_local = S_values[i] - S_values[i-1];
-                double Delta = (P_current - P_minus) / delta_S_local;
-                Delta_values.push_back(Delta);
+            else {
+                tempOption = std::make_unique<AmericanOption>(
+                    type, exerciseType, maturity, strike,
+                    calculationDate, current_S, volatility, M, N
+                );
             }
-            else{
-                // Différence centrale
-                double P_plus = P_values[i+1];
-                double P_minus = P_values[i-1];
-                double Delta = (P_plus - P_minus) / (2 * delta_S_finite);
-                Delta_values.push_back(Delta);
+
+            // Calcul de Delta via la méthode delta(...)
+            double delta_i = 0.0;
+            if (exerciseType == "europeen") {
+                EuropeanOption* euroOpt = dynamic_cast<EuropeanOption*>(tempOption.get());
+                if(euroOpt) {
+                    delta_i = euroOpt->delta(market, dS_for_delta);
+                }
             }
+            else {
+                AmericanOption* amOpt = dynamic_cast<AmericanOption*>(tempOption.get());
+                if(amOpt) {
+                    delta_i = amOpt->delta(market, dS_for_delta);
+                }
+            }
+
+            Delta_values_method2.push_back(delta_i);
         }
 
-        // Delta(S,T0) --> CSV
-        std::ofstream deltaFile("delta_vs_S.csv");
-        if (!deltaFile.is_open()) {
-            throw std::runtime_error("Impossible de créer le fichier de sortie pour Delta.");
+        // Exporter Delta(S) dans un CSV
+        std::ofstream deltaFileMethod2("delta_vs_S.csv");
+        if (!deltaFileMethod2.is_open()) {
+            throw std::runtime_error("Impossible de créer 'delta_vs_S.csv'.");
         }
-
-        // l'en-tête
-        deltaFile << "S,Delta(S,T0)\n";
-
+        deltaFileMethod2 << "S,Delta(S)\n";
         for(int i =0; i < numPoints; ++i){
-            deltaFile << S_values[i] << "," << Delta_values[i] << "\n";
+            double current_S = S_min + i * delta_S;
+            deltaFileMethod2 << current_S << "," << Delta_values_method2[i] << "\n";
         }
+        deltaFileMethod2.close();
 
-        deltaFile.close();
-
-        std::cout << "[Données] Delta(S,T0) en fonction de S ont été écrits dans 'delta_vs_S.csv'.\n";
+        std::cout << "[Données] Delta(S) via la méthode delta(...) a été écrit dans 'delta_vs_S.csv'.\n";
 
     }
     catch (const std::exception& e) {

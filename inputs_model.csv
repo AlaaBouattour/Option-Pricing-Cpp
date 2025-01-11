@@ -1,9 +1,9 @@
 Parametre,Valeur
 Type de contrat,Put
-Type d exercice,europeen
+Type d exercice,american
 Maturite (en annees),1.0
 Prix d exercice (strike), 100 
-Prix actuel (S0), 51,5152 
+Prix actuel (S0), 90
 Volatilite (sigma),0.2
 Discretisation (temps), 100 
 Discretisation (spot), 200 
